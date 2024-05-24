@@ -14,7 +14,7 @@ import (
 
 var wg sync.WaitGroup
 var doneJobs sync.Map
-var jobsCount = 1_000
+var jobsCount = 1_000_000
 
 type mockTask struct {
 	ID int
@@ -58,7 +58,9 @@ func TestMySQLQueue(t *testing.T) {
 	queue := New(ctx, src, Config{
 		Workers:        3,
 		Name:           "default",
-		RemoveDoneJobs: false,
+		RemoveDoneJobs: true,
+		TryAttempts:    3,
+		DelayAttempts:  time.Second * 15,
 	})
 
 	defer src.Close()
@@ -110,6 +112,8 @@ func TestPGQueue(t *testing.T) {
 		Workers:        10,
 		Name:           "default",
 		RemoveDoneJobs: true,
+		TryAttempts:    3,
+		DelayAttempts:  time.Second * 15,
 	})
 
 	defer src.Close()
