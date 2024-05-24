@@ -236,7 +236,7 @@ func TestRedis(t *testing.T) {
 	}
 
 	queue := New(ctx, src, Config{
-		Workers:        10,
+		Workers:        5,
 		Name:           "default",
 		RemoveDoneJobs: false,
 	})

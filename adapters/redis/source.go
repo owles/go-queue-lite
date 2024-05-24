@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"time"
@@ -53,11 +54,12 @@ func (s *Source) Enqueue(job core.Model) error {
 
 func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 	var jobs []core.Model
+	var delayed []core.Model
 
 	for i := 0; i < limit; i++ {
-		results, err := s.client.ZPopMin(s.ctx, queue, 1).Result()
-		if err == redis.Nil || len(results) == 0 {
-			return jobs, nil
+		results, err := s.client.ZPopMax(s.ctx, queue, 1).Result()
+		if errors.Is(err, redis.Nil) || len(results) == 0 {
+			break
 		} else if err != nil {
 			return nil, fmt.Errorf("failed to dequeue job: %v", err)
 		}
@@ -71,11 +73,16 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 		}
 
 		if job.AvailableAt.After(time.Now().UTC()) {
+			delayed = append(delayed, job)
 			continue
 		}
 
 		job.Status = core.JobPending
 		jobs = append(jobs, job)
+	}
+
+	for _, job := range delayed {
+		s.Enqueue(job)
 	}
 
 	return jobs, nil
