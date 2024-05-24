@@ -63,7 +63,7 @@ func (w *Worker) start() {
 							w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 						} else {
 							if err = task.Handle(); err != nil {
-								if job.Attempts >= w.ctx.tryAttempts {
+								if job.Attempts < w.ctx.tryAttempts {
 									w.ctx.src.UpdateJob(*job.SetStatus(core.JobQueued).
 										SetAvailableAt(time.Now().Add(w.ctx.delayAttempts).UTC()))
 								} else {
