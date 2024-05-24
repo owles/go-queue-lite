@@ -1,7 +1,7 @@
 package core
 
 type SourceInterface interface {
-	ResetPending() error
+	ResetPending(queue string) error
 
 	Enqueue(job Model) error
 	Dequeue(queue string, limit int) ([]Model, error)

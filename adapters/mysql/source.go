@@ -64,13 +64,13 @@ func (s *Source) Up() error {
 	return nil
 }
 
-func (s *Source) ResetPending() error {
+func (s *Source) ResetPending(queue string) error {
 	query := `
 		UPDATE jobs
 		SET status = ?
-		WHERE status = ?;
+		WHERE status = ? AND queue = ?;
 	`
-	_, err := s.db.Exec(query, core.JobQueued, core.JobPending)
+	_, err := s.db.Exec(query, core.JobQueued, core.JobPending, queue)
 	return err
 }
 

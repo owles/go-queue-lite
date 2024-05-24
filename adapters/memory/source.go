@@ -20,12 +20,12 @@ func NewMemorySource() *Source {
 	}
 }
 
-func (m *Source) ResetPending() error {
+func (m *Source) ResetPending(queue string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	for _, job := range m.jobs {
-		if job.Status == core.JobPending {
+		if job.Status == core.JobPending && job.Queue == queue {
 			job.Status = core.JobQueued
 		}
 	}

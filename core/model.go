@@ -42,7 +42,7 @@ func NewModel() *Model {
 
 func (j *Model) setupScore() {
 	priorityShift := int64(j.Priority) << 32
-	createdAtSeconds := j.CreatedAt.UnixMilli()
+	createdAtSeconds := j.AvailableAt.Unix()
 	j.Score = priorityShift + createdAtSeconds
 }
 

@@ -141,7 +141,7 @@ func (q *Queue) Run() error {
 		return core.ErrAlreadyRunning
 	}
 
-	if err := q.src.ResetPending(); err != nil {
+	if err := q.src.ResetPending(q.config.Name); err != nil {
 		return err
 	}
 

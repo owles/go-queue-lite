@@ -65,13 +65,13 @@ func (s *PostgresSource) Up() error {
 	return nil
 }
 
-func (s *PostgresSource) ResetPending() error {
+func (s *PostgresSource) ResetPending(queue string) error {
 	query := `
 		UPDATE jobs
 		SET status = $1
-		WHERE status = $2;
+		WHERE status = $2 AND queue = $3;
 	`
-	_, err := s.db.Exec(query, core.JobQueued, core.JobPending)
+	_, err := s.db.Exec(query, core.JobQueued, core.JobPending, queue)
 	return err
 }
 
