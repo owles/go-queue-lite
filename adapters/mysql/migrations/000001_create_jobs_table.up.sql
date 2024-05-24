@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     priority INT,
     status INT,
     attempts INT,
-    payload TEXT,
+    payload JSON,
     score BIGINT,
     available_at TIMESTAMP,
     created_at TIMESTAMP
