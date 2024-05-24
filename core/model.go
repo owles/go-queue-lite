@@ -57,7 +57,7 @@ func (j *Model) SetPayload(pl json.RawMessage) *Model {
 }
 
 func (j *Model) SetAvailableAt(at time.Time) *Model {
-	j.AvailableAt = at
+	j.AvailableAt = at.UTC()
 	return j
 }
 
