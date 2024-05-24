@@ -43,7 +43,7 @@ func (w *Worker) start() {
 	for {
 		select {
 		case job := <-w.ctx.jobCh:
-			fmt.Printf("worker: %d got a Job: %s with priority: %d \n", w.id, job.ID, job.Priority)
+			// fmt.Printf("worker: %d got a Job: %s with priority: %d \n", w.id, job.ID, job.Priority)
 			//
 			job.Attempt()
 

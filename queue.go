@@ -131,6 +131,7 @@ func (q *Queue) pool() {
 			for _, job := range jobs {
 				q.jobCh <- &job
 			}
+			time.Sleep(time.Nanosecond)
 		}
 	}
 }
