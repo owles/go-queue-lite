@@ -14,7 +14,7 @@ import (
 
 var wg sync.WaitGroup
 var doneJobs sync.Map
-var jobsCount = 10
+var jobsCount = 100_000
 
 type mockTask struct {
 	ID int
