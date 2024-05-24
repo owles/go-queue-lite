@@ -138,37 +138,6 @@ func (s *Source) Clear(queue string) error {
 }
 
 func (s *Source) ResetPending(queue string) error {
-	keys, err := s.client.ZRange(s.ctx, queue, 0, -1).Result()
-	if err != nil {
-		return fmt.Errorf("failed to get jobs from queue: %v", err)
-	}
-
-	for _, data := range keys {
-		var job core.Model
-		err := json.Unmarshal([]byte(data), &job)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal job: %v", err)
-		}
-
-		if job.Status == core.JobPending {
-			// Сбрасываем статус на Queued
-			job.Status = core.JobQueued
-			updatedData, err := json.Marshal(job)
-			if err != nil {
-				return fmt.Errorf("failed to marshal job: %v", err)
-			}
-
-			// Обновляем задание в Redis
-			err = s.client.ZAdd(s.ctx, queue, &redis.Z{
-				Score:  float64(job.Score),
-				Member: updatedData,
-			}).Err()
-			if err != nil {
-				return fmt.Errorf("failed to update job: %v", err)
-			}
-		}
-	}
-
 	return nil
 }
 
