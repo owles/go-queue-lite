@@ -43,7 +43,7 @@ func (w *Worker) start() {
 	for {
 		select {
 		case job := <-w.ctx.jobCh:
-			// fmt.Printf("worker: %d got a Job: %s with priority: %d \n", w.id, job.ID, job.Priority)
+			fmt.Printf("worker: %d got a Job: %s with priority: %d \n", w.id, job.ID, job.Priority)
 			//
 			job.Attempt()
 
@@ -72,7 +72,7 @@ func (w *Worker) start() {
 								}
 							} else {
 								if w.ctx.removeDoneJobs {
-									w.ctx.src.DeleteJob(job.ID)
+									w.ctx.src.DeleteJob(job.ID, job.Queue)
 								} else {
 									w.ctx.src.UpdateJob(*job.SetStatus(core.JobDone))
 								}

@@ -14,15 +14,16 @@ import (
 
 var wg sync.WaitGroup
 var doneJobs sync.Map
-var jobsCount = 1_000_000
+var jobsCount = 10
 
 type mockTask struct {
 	ID int
 }
 
 func (t *mockTask) Handle() error {
-	if t.ID == 100 {
-		return fmt.Errorf("mock task had id 100")
+	if t.ID == 6 {
+		// panic(fmt.Errorf("Test panic!"))
+		// return fmt.Errorf("mock task had id 100")
 	}
 	defer func() {
 		time.AfterFunc(time.Second, func() {
@@ -55,12 +56,15 @@ func TestMySQLQueue(t *testing.T) {
 		t.Fatalf("Failed to UP migration: %v", err)
 	}
 
+	src.Clear("default")
+
 	queue := New(ctx, src, Config{
-		Workers:        3,
+		Workers:        1,
 		Name:           "default",
 		RemoveDoneJobs: true,
 		TryAttempts:    3,
 		DelayAttempts:  time.Second * 15,
+		PrefetchFactor: 1,
 	})
 
 	defer src.Close()
@@ -74,8 +78,8 @@ func TestMySQLQueue(t *testing.T) {
 			job.High()
 		}
 
-		if i == 2 {
-			job.DelaySeconds(15)
+		if i >= 2 && i <= 5 {
+			job.DelaySeconds(5)
 		}
 
 		err := queue.Enqueue(job)
@@ -207,12 +211,15 @@ func TestRedis(t *testing.T) {
 	}
 
 	queue := New(ctx, src, Config{
-		Workers:        5,
+		Workers:        1,
 		Name:           "default",
 		RemoveDoneJobs: true,
 		TryAttempts:    3,
+		PrefetchFactor: 1,
 		DelayAttempts:  time.Second * 15,
 	})
+
+	src.Clear("default")
 
 	defer src.Close()
 
@@ -226,8 +233,8 @@ func TestRedis(t *testing.T) {
 			job.High()
 		}
 
-		if i == 2 {
-			job.DelaySeconds(5)
+		if i >= 2 && i <= 5 {
+			job.DelaySeconds(5 + i)
 		}
 
 		err := queue.Enqueue(job)

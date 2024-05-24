@@ -7,7 +7,7 @@ type SourceInterface interface {
 	Dequeue(queue string, limit int) ([]Model, error)
 
 	UpdateJob(job Model) error
-	DeleteJob(jobID string) error
+	DeleteJob(queue, jobID string) error
 
 	Length(queue string) (int, error)
 	Count(queue string, status Status) (int, error)

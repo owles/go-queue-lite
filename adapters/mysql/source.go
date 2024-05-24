@@ -174,12 +174,12 @@ func (s *Source) UpdateJob(job core.Model) error {
 	return err
 }
 
-func (s *Source) DeleteJob(jobID string) error {
+func (s *Source) DeleteJob(queue, jobID string) error {
 	query := `
 		DELETE FROM jobs
-		WHERE id = ?;
+		WHERE id = ? AND queue = ?;
 	`
-	_, err := s.db.Exec(query, jobID)
+	_, err := s.db.Exec(query, jobID, queue)
 	return err
 }
 

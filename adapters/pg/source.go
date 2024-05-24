@@ -171,12 +171,12 @@ func (s *PostgresSource) UpdateJob(job core.Model) error {
 	return err
 }
 
-func (s *PostgresSource) DeleteJob(jobID string) error {
+func (s *PostgresSource) DeleteJob(queue, jobID string) error {
 	query := `
 		DELETE FROM jobs
-		WHERE id = $1;
+		WHERE id = $1 AND queue = $2;
 	`
-	_, err := s.db.Exec(query, jobID)
+	_, err := s.db.Exec(query, jobID, queue)
 	return err
 }
 

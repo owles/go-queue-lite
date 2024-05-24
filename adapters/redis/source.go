@@ -54,10 +54,10 @@ func (s *Source) Enqueue(job core.Model) error {
 
 func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 	var jobs []core.Model
-	var delayed []core.Model
+	offset := 0
 
-	for i := 0; i < limit; i++ {
-		results, err := s.client.ZPopMax(s.ctx, queue, 1).Result()
+	for len(jobs) < limit {
+		results, err := s.client.ZRevRangeWithScores(s.ctx, queue, int64(offset), int64(offset)).Result()
 		if errors.Is(err, redis.Nil) || len(results) == 0 {
 			break
 		} else if err != nil {
@@ -73,16 +73,24 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 		}
 
 		if job.AvailableAt.After(time.Now().UTC()) {
-			delayed = append(delayed, job)
+			offset++
+			if err := s.Enqueue(job); err != nil {
+				return nil, fmt.Errorf("failed to re-enqueue job: %v", err)
+			}
 			continue
+		}
+
+		_, err = s.client.ZRem(s.ctx, queue, data).Result()
+		if err != nil {
+			return nil, fmt.Errorf("failed to remove job from queue: %v", err)
 		}
 
 		job.Status = core.JobPending
 		jobs = append(jobs, job)
-	}
 
-	for _, job := range delayed {
-		s.Enqueue(job)
+		// s.UpdateJob(job)
+
+		offset++
 	}
 
 	return jobs, nil
@@ -98,7 +106,7 @@ func (s *Source) UpdateJob(job core.Model) error {
 		return err
 	}
 
-	err = s.client.Set(s.ctx, fmt.Sprintf("job:%s", job.ID), data, 0).Err()
+	err = s.client.Set(s.ctx, fmt.Sprintf(job.Queue+":%s", job.ID), data, 0).Err()
 	if err != nil {
 		return err
 	}
@@ -106,8 +114,8 @@ func (s *Source) UpdateJob(job core.Model) error {
 	return nil
 }
 
-func (s *Source) DeleteJob(jobID string) error {
-	err := s.client.Del(s.ctx, fmt.Sprintf("job:%s", jobID)).Err()
+func (s *Source) DeleteJob(queue, jobID string) error {
+	err := s.client.Del(s.ctx, fmt.Sprintf(queue+":%s", jobID)).Err()
 	if err != nil {
 		return err
 	}
@@ -138,6 +146,34 @@ func (s *Source) Clear(queue string) error {
 }
 
 func (s *Source) ResetPending(queue string) error {
+	iter := s.client.Scan(s.ctx, 0, queue+":*", 0).Iterator()
+	for iter.Next(s.ctx) {
+		key := iter.Val()
+
+		data, err := s.client.Get(s.ctx, key).Result()
+		if err != nil {
+			return fmt.Errorf("failed to get job: %v", err)
+		}
+
+		var job core.Model
+		err = json.Unmarshal([]byte(data), &job)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal job: %v", err)
+		}
+
+		if job.Status == core.JobPending {
+			job.Status = core.JobQueued
+			if err := s.Enqueue(job); err != nil {
+				return fmt.Errorf("failed to re-enqueue job: %v", err)
+			}
+			s.client.Del(s.ctx, key)
+		}
+	}
+
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("error iterating over job keys: %v", err)
+	}
+
 	return nil
 }
 

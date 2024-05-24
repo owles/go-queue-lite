@@ -2,7 +2,6 @@ package core
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/google/uuid"
 	"reflect"
 	"time"
@@ -45,8 +44,6 @@ func NewModel() *Model {
 func (j *Model) setupScore() {
 	priorityShift := int64(j.Priority) << 32
 	createdAtSeconds := j.CreatedAt.UnixMilli() - (j.AvailableAt.UnixMilli() - j.CreatedAt.UnixMilli())
-
-	fmt.Println(j.Priority, j.AvailableAt, createdAtSeconds)
 
 	j.Score = priorityShift + createdAtSeconds
 }
