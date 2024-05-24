@@ -86,9 +86,8 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 		}
 
 		job.Status = core.JobPending
+		s.UpdateJob(job)
 		jobs = append(jobs, job)
-
-		// s.UpdateJob(job)
 
 		offset++
 	}

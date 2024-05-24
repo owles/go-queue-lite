@@ -72,7 +72,7 @@ func (w *Worker) start() {
 								}
 							} else {
 								if w.ctx.removeDoneJobs {
-									w.ctx.src.DeleteJob(job.ID, job.Queue)
+									w.ctx.src.DeleteJob(job.Queue, job.ID)
 								} else {
 									w.ctx.src.UpdateJob(*job.SetStatus(core.JobDone))
 								}
