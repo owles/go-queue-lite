@@ -20,6 +20,7 @@ type Model struct {
 	Attempts    int
 	Score       int64
 	Payload     json.RawMessage
+	Error       string
 	AvailableAt time.Time
 	CreatedAt   time.Time
 }
@@ -74,6 +75,11 @@ func (j *Model) SetStatus(status Status) *Model {
 
 func (j *Model) Attempt() *Model {
 	j.Attempts++
+	return j
+}
+
+func (j *Model) SetError(e string) *Model {
+	j.Error = e
 	return j
 }
 

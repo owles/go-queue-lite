@@ -77,8 +77,8 @@ func (s *Source) ResetPending(queue string) error {
 func (s *Source) Enqueue(job core.Model) error {
 	query := `
 		INSERT INTO jobs (
-			id, queue, priority, status, attempts, payload, score, available_at, created_at
-		) VALUES (:id, :queue, :priority, :status, :attempts, :payload, :score, :available_at, :created_at);
+			id, queue, priority, status, attempts, error, payload, score, available_at, created_at
+		) VALUES (:id, :queue, :priority, :status, :attempts, :error, :payload, :score, :available_at, :created_at);
 	`
 	_, err := s.db.NamedExec(query, map[string]interface{}{
 		"id":           job.ID,
@@ -86,6 +86,7 @@ func (s *Source) Enqueue(job core.Model) error {
 		"priority":     job.Priority,
 		"status":       job.Status,
 		"attempts":     job.Attempts,
+		"error":        job.Error,
 		"payload":      job.Payload,
 		"score":        job.Score,
 		"available_at": job.AvailableAt,
@@ -102,7 +103,7 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 	defer tx.Rollback()
 
 	query := `
-		SELECT id, queue, priority, status, attempts, payload, score, available_at AS availableat, created_at AS createdat
+		SELECT id, queue, priority, status, attempts, error, payload, score, available_at AS availableat, created_at AS createdat
 		FROM jobs
 		WHERE queue = ? AND status = ? AND available_at <= ?
 		ORDER BY score DESC
@@ -160,13 +161,14 @@ func (s *Source) UpdateJob(job core.Model) error {
 
 	query := `
 		UPDATE jobs
-		SET status = :status, attempts = :attempts, available_at = :available_at
+		SET status = :status, attempts = :attempts, error = :error, available_at = :available_at
 		WHERE id = :id;
 	`
 	_, err := s.db.NamedExec(query, map[string]interface{}{
 		"id":           job.ID,
 		"status":       job.Status,
 		"attempts":     job.Attempts,
+		"error":        job.Error,
 		"available_at": job.AvailableAt,
 	})
 	return err

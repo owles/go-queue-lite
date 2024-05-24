@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     attempts INTEGER,
     payload TEXT,
     score INTEGER,
+    error TEXT,
     available_at TIMESTAMP,
     created_at TIMESTAMP
 );

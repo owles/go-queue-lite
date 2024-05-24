@@ -79,8 +79,8 @@ func (s *Source) ResetPending(queue string) error {
 func (s *Source) Enqueue(job core.Model) error {
 	query := `
 		INSERT INTO jobs (
-			id, queue, priority, status, attempts, payload, score, available_at, created_at
-		) VALUES (:id, :queue, :priority, :status, :attempts, :payload, :score, :available_at, :created_at);
+			id, queue, priority, status, attempts, error, payload, score, available_at, created_at
+		) VALUES (:id, :queue, :priority, :status, :attempts, :error, :payload, :score, :available_at, :created_at);
 	`
 
 	_, err := s.db.NamedExec(query, map[string]interface{}{
@@ -89,6 +89,7 @@ func (s *Source) Enqueue(job core.Model) error {
 		"priority":     job.Priority,
 		"status":       job.Status,
 		"attempts":     job.Attempts,
+		"error":        job.Error,
 		"payload":      job.Payload,
 		"score":        job.Score,
 		"available_at": job.AvailableAt,
@@ -119,6 +120,7 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 		Priority    core.Priority `db:"priority"`
 		Status      core.Status   `db:"status"`
 		Attempts    int           `db:"attempts"`
+		Error       string        `db:"error"`
 		Payload     []byte        `db:"payload"`
 		Score       int64         `db:"score"`
 		AvailableAt time.Time     `db:"available_at"`
@@ -146,6 +148,7 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 			Priority:    rawJob.Priority,
 			Status:      rawJob.Status,
 			Attempts:    rawJob.Attempts,
+			Error:       rawJob.Error,
 			Payload:     rawJob.Payload,
 			Score:       rawJob.Score,
 			AvailableAt: rawJob.AvailableAt,
@@ -186,10 +189,16 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 func (s *Source) UpdateJob(job core.Model) error {
 	query := `
 		UPDATE jobs
-		SET status = :status, attempts = :attempts, available_at = :available_at
+		SET status = :status, attempts = :attempts, error = :error, available_at = :available_at
 		WHERE id = :id;
 	`
-	_, err := s.db.NamedExec(query, job)
+	_, err := s.db.NamedExec(query, map[string]interface{}{
+		"id":           job.ID,
+		"status":       job.Status,
+		"attempts":     job.Attempts,
+		"error":        job.Error,
+		"available_at": job.AvailableAt,
+	})
 	return err
 }
 

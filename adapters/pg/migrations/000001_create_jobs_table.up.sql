@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     attempts INT,
     payload JSON,
     score BIGINT,
+    error TEXT,
     available_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE
 );

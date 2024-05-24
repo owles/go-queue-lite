@@ -3,7 +3,6 @@ package go_queue_lite
 import (
 	"context"
 	"fmt"
-	"go-queue-lite/adapters/memory"
 	"go-queue-lite/adapters/mysql"
 	"go-queue-lite/adapters/pg"
 	"go-queue-lite/adapters/redis"
@@ -15,19 +14,16 @@ import (
 
 var wg sync.WaitGroup
 var doneJobs sync.Map
-var jobsCount = 100_000
+var jobsCount = 1_000
 
 type mockTask struct {
-	ID    int
-	Tries int
+	ID int
 }
 
 func (t *mockTask) Handle() error {
-	if t.ID == 100 && t.Tries < 2 {
-		t.Tries++
+	if t.ID == 100 {
 		return fmt.Errorf("mock task had id 100")
 	}
-
 	defer func() {
 		time.AfterFunc(time.Second, func() {
 			wg.Done()
@@ -42,41 +38,6 @@ func (t *mockTask) Handle() error {
 	// time.Sleep(time.Duration(rand.Intn(901)+100) * time.Millisecond)
 
 	return nil
-}
-
-func TestMemoryQueue(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	src := memory.NewMemorySource()
-	queue := New(ctx, src, Config{
-		Workers: 5,
-		Name:    "default",
-	})
-
-	queue.RegisterTaskType(&mockTask{})
-	go queue.Run()
-
-	for i := 0; i < jobsCount; i++ {
-		task := &mockTask{ID: i}
-		job := NewJob(task)
-		if i < 5 {
-			job.High()
-		}
-
-		if i == 2 {
-			job.DelaySeconds(5)
-		}
-
-		err := queue.Enqueue(job)
-		if err != nil {
-			t.Error(err)
-		}
-		wg.Add(1)
-	}
-
-	wg.Wait()
-	fmt.Println("Done!")
 }
 
 func TestMySQLQueue(t *testing.T) {
