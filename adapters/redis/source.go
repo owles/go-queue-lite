@@ -89,6 +89,10 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 }
 
 func (s *Source) UpdateJob(job core.Model) error {
+	if job.Status == core.JobQueued {
+		return s.Enqueue(job)
+	}
+
 	data, err := json.Marshal(job)
 	if err != nil {
 		return err

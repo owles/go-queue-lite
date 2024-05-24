@@ -15,13 +15,17 @@ import (
 
 var wg sync.WaitGroup
 var doneJobs sync.Map
-var jobsCount = 10
+var jobsCount = 100_000
 
 type mockTask struct {
 	ID int
 }
 
 func (t *mockTask) Handle() error {
+	if t.ID == 100 {
+		return fmt.Errorf("mock task had id 100")
+	}
+
 	defer func() {
 		time.AfterFunc(time.Second, func() {
 			wg.Done()
@@ -238,12 +242,15 @@ func TestRedis(t *testing.T) {
 	queue := New(ctx, src, Config{
 		Workers:        5,
 		Name:           "default",
-		RemoveDoneJobs: false,
+		RemoveDoneJobs: true,
+		TryAttempts:    3,
+		DelayAttempts:  30,
 	})
 
 	defer src.Close()
 
 	queue.RegisterTaskType(&mockTask{})
+	ts := time.Now()
 
 	for i := 0; i < jobsCount; i++ {
 		task := &mockTask{ID: i}
@@ -263,7 +270,9 @@ func TestRedis(t *testing.T) {
 		wg.Add(1)
 	}
 
-	ts := time.Now()
+	fmt.Printf("Created %d jobs in %s \n", jobsCount, time.Since(ts))
+
+	ts = time.Now()
 
 	go queue.Run()
 

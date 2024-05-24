@@ -15,7 +15,7 @@ type Config struct {
 	Name           string
 	Workers        int
 	TryAttempts    int
-	DelayAttempts  int
+	DelayAttempts  time.Duration
 	PrefetchFactor int
 	RemoveDoneJobs bool
 }

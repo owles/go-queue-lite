@@ -18,7 +18,7 @@ type WorkerContext struct {
 	typeManager core.TaskTypeManagerInterface
 
 	tryAttempts    int
-	delayAttempts  int
+	delayAttempts  time.Duration
 	removeDoneJobs bool
 }
 
@@ -43,7 +43,7 @@ func (w *Worker) start() {
 	for {
 		select {
 		case job := <-w.ctx.jobCh:
-			fmt.Printf("worker: %d got a Job: %s with priority: %d \n", w.id, job.ID, job.Priority)
+			// fmt.Printf("worker: %d got a Job: %s with priority: %d \n", w.id, job.ID, job.Priority)
 			//
 			job.Attempt()
 
@@ -63,9 +63,9 @@ func (w *Worker) start() {
 							w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 						} else {
 							if err = task.Handle(); err != nil {
-								if w.ctx.tryAttempts >= job.Attempts {
+								if job.Attempts >= w.ctx.tryAttempts {
 									w.ctx.src.UpdateJob(*job.SetStatus(core.JobQueued).
-										SetAvailableAt(time.Now().Add(time.Second * time.Duration(w.ctx.delayAttempts)).UTC()))
+										SetAvailableAt(time.Now().Add(w.ctx.delayAttempts).UTC()))
 								} else {
 									w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 								}
