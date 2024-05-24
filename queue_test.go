@@ -18,11 +18,13 @@ var doneJobs sync.Map
 var jobsCount = 100_000
 
 type mockTask struct {
-	ID int
+	ID    int
+	Tries int
 }
 
 func (t *mockTask) Handle() error {
-	if t.ID == 100 {
+	if t.ID == 100 && t.Tries < 2 {
+		t.Tries++
 		return fmt.Errorf("mock task had id 100")
 	}
 
@@ -244,7 +246,7 @@ func TestRedis(t *testing.T) {
 		Name:           "default",
 		RemoveDoneJobs: true,
 		TryAttempts:    3,
-		DelayAttempts:  30,
+		DelayAttempts:  time.Second * 15,
 	})
 
 	defer src.Close()
