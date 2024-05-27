@@ -14,7 +14,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"go-queue-lite/core"
+	"github.com/owles/go-queue-lite/core"
 )
 
 //go:embed migrations/*

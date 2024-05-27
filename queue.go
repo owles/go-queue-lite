@@ -3,7 +3,7 @@ package go_queue_lite
 import (
 	"context"
 	"errors"
-	"go-queue-lite/core"
+	"github.com/owles/go-queue-lite/core"
 	"log/slog"
 	"reflect"
 	"sync"

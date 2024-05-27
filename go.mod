@@ -1,4 +1,4 @@
-module go-queue-lite
+module github.com/owles/go-queue-lite
 
 go 1.22
 

@@ -13,7 +13,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	pg "github.com/lib/pq"
-	"go-queue-lite/core"
+	"github.com/owles/go-queue-lite/core"
 )
 
 //go:embed migrations/*

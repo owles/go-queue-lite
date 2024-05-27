@@ -8,7 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"time"
 
-	"go-queue-lite/core"
+	"github.com/owles/go-queue-lite/core"
 )
 
 type Source struct {

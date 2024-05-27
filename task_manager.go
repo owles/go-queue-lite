@@ -1,7 +1,7 @@
 package go_queue_lite
 
 import (
-	"go-queue-lite/core"
+	"github.com/owles/go-queue-lite/core"
 	"reflect"
 	"strings"
 	"sync"

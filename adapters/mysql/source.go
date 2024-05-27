@@ -9,7 +9,7 @@ import (
 	mysql2 "github.com/golang-migrate/migrate/v4/database/mysql"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jmoiron/sqlx"
-	"go-queue-lite/core"
+	"github.com/owles/go-queue-lite/core"
 	"io/fs"
 	"strings"
 	"time"
