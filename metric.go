@@ -16,8 +16,9 @@ type Metrics struct {
 	mu              sync.Mutex
 }
 
-func NewMetrics() *Metrics {
+func NewMetrics(id int) *Metrics {
 	return &Metrics{
+		workerID:  id,
 		startTime: time.Now(),
 	}
 }

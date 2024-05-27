@@ -36,7 +36,7 @@ func NewWorker(id int, ctx *WorkerContext) *Worker {
 	return &Worker{
 		id:     id,
 		ctx:    ctx,
-		metric: NewMetrics(),
+		metric: NewMetrics(id),
 	}
 }
 
