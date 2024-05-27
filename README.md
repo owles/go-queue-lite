@@ -53,6 +53,11 @@ queue := New(ctx, src, Config{
     DelayAttempts:  time.Second * 15,
     PrefetchFactor: 1,
 })
+
+err = queue.Run()
+if err != nil {
+    panic(err)
+}
 ```
 
 ### Adding Jobs
