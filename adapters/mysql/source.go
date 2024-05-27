@@ -12,7 +12,6 @@ import (
 	"github.com/owles/go-queue-lite/core"
 	"io/fs"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -21,7 +20,6 @@ var Migrations embed.FS
 
 type Source struct {
 	db *sqlx.DB
-	mu sync.Mutex
 }
 
 func NewMySQLSource(dsn string) (*Source, error) {
@@ -67,9 +65,6 @@ func (s *Source) Up() error {
 }
 
 func (s *Source) ResetPending(queue string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		UPDATE jobs
 		SET status = ?
@@ -80,9 +75,6 @@ func (s *Source) ResetPending(queue string) error {
 }
 
 func (s *Source) Enqueue(job core.Model) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		INSERT INTO jobs (
 			id, queue, priority, status, attempts, error, payload, score, available_at, created_at
@@ -104,9 +96,6 @@ func (s *Source) Enqueue(job core.Model) error {
 }
 
 func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	tx, err := s.db.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %v", err)
@@ -166,9 +155,6 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 }
 
 func (s *Source) UpdateJob(job core.Model) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if job.ID == "" {
 		return core.ErrNoJobFound
 	}
@@ -189,9 +175,6 @@ func (s *Source) UpdateJob(job core.Model) error {
 }
 
 func (s *Source) DeleteJob(queue, jobID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		DELETE FROM jobs
 		WHERE id = ? AND queue = ?;
@@ -201,9 +184,6 @@ func (s *Source) DeleteJob(queue, jobID string) error {
 }
 
 func (s *Source) Length(queue string) (int, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		SELECT COUNT(*)
 		FROM jobs
@@ -215,9 +195,6 @@ func (s *Source) Length(queue string) (int, error) {
 }
 
 func (s *Source) Count(queue string, status core.Status) (int, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		SELECT COUNT(*)
 		FROM jobs
@@ -229,9 +206,6 @@ func (s *Source) Count(queue string, status core.Status) (int, error) {
 }
 
 func (s *Source) Clear(queue string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		DELETE FROM jobs
 		WHERE queue = ?;

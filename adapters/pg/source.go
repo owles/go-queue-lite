@@ -9,7 +9,6 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"io/fs"
-	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -22,7 +21,6 @@ var Migrations embed.FS
 
 type PostgresSource struct {
 	db *sqlx.DB
-	mu sync.Mutex
 }
 
 func NewPostgresSource(dsn string) (*PostgresSource, error) {
@@ -68,9 +66,6 @@ func (s *PostgresSource) Up() error {
 }
 
 func (s *PostgresSource) ResetPending(queue string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		UPDATE jobs
 		SET status = $1
@@ -81,9 +76,6 @@ func (s *PostgresSource) ResetPending(queue string) error {
 }
 
 func (s *PostgresSource) Enqueue(job core.Model) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		INSERT INTO jobs (
 			id, queue, priority, status, attempts, error, payload, score, available_at, created_at
@@ -106,9 +98,6 @@ func (s *PostgresSource) Enqueue(job core.Model) error {
 }
 
 func (s *PostgresSource) Dequeue(queue string, limit int) ([]core.Model, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	tx, err := s.db.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %v", err)
@@ -166,9 +155,6 @@ func (s *PostgresSource) Dequeue(queue string, limit int) ([]core.Model, error) 
 }
 
 func (s *PostgresSource) UpdateJob(job core.Model) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		UPDATE jobs
 		SET status = :status, attempts = :attempts, error = :error, available_at = :available_at
@@ -186,9 +172,6 @@ func (s *PostgresSource) UpdateJob(job core.Model) error {
 }
 
 func (s *PostgresSource) DeleteJob(queue, jobID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		DELETE FROM jobs
 		WHERE id = $1 AND queue = $2;
@@ -198,9 +181,6 @@ func (s *PostgresSource) DeleteJob(queue, jobID string) error {
 }
 
 func (s *PostgresSource) Length(queue string) (int, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		SELECT COUNT(*)
 		FROM jobs
@@ -212,9 +192,6 @@ func (s *PostgresSource) Length(queue string) (int, error) {
 }
 
 func (s *PostgresSource) Count(queue string, status core.Status) (int, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		SELECT COUNT(*)
 		FROM jobs
@@ -226,9 +203,6 @@ func (s *PostgresSource) Count(queue string, status core.Status) (int, error) {
 }
 
 func (s *PostgresSource) Clear(queue string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	query := `
 		DELETE FROM jobs
 		WHERE queue = $1;
