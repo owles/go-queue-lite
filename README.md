@@ -2,6 +2,8 @@
 
 Go Queue Lite is a lightweight queue implementation in Go designed to handle background tasks efficiently. This package provides a simple and scalable way to manage jobs, workers, and task execution.
 
+See an example [here](https://github.com/owles/go-queue-lite-example).
+
 ## Features
 
 - Lightweight and efficient job queue.
