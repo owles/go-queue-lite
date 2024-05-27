@@ -14,7 +14,7 @@ Go Queue Lite is a lightweight queue implementation in Go designed to handle bac
 To install the package, run:
 
 ```bash
-go get github.com/owless/go-queue-lite
+go get github.com/owles/go-queue-lite
 ```
 
 ## Usage
@@ -25,7 +25,7 @@ First, import the package:
 
 ```go
 import (
-    "github.com/owless/go-queue-lite"
+    "github.com/owles/go-queue-lite"
 )
 ```
 
