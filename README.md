@@ -57,7 +57,7 @@ queue := New(ctx, src, Config{
 
 ### Adding Jobs
 
-Add jobs to the queue using the `AddJob` method:
+Add jobs to the queue using the `Enqueue` method:
 
 ```go
 // Create struct with Task interface implementation:
