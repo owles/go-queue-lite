@@ -1,11 +1,14 @@
 package go_queue_lite
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
 
 type Metrics struct {
+	workerID int
+
 	processed       int64
 	errors          int64
 	totalProcessing time.Duration
@@ -17,6 +20,12 @@ func NewMetrics() *Metrics {
 	return &Metrics{
 		startTime: time.Now(),
 	}
+}
+
+func (m *Metrics) GetWorkerID() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.workerID
 }
 
 func (m *Metrics) IncProcessed() {
@@ -95,4 +104,41 @@ func (m *Metrics) GetTasksPerDay() float64 {
 		return 0
 	}
 	return float64(m.processed) / elapsed
+}
+
+func (m *Metrics) Print() {
+	avgProcessingTime := m.GetAverageProcessingTime()
+	tasksPerSecond := m.GetTasksPerSecond()
+	tasksPerMinute := m.GetTasksPerMinute()
+	tasksPerDay := m.GetTasksPerDay()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	fmt.Printf("Worker ID: %d\n", m.workerID)
+	fmt.Printf("Processed: %d\n", m.processed)
+	fmt.Printf("Errors: %d\n", m.errors)
+	fmt.Printf("Total Processing Time: %s\n", m.totalProcessing)
+	if m.processed > 0 {
+		fmt.Printf("Average Processing Time: %s\n", avgProcessingTime)
+	} else {
+		fmt.Printf("Average Processing Time: N/A\n")
+	}
+	elapsed := time.Since(m.startTime)
+	fmt.Printf("Elapsed Time: %s\n", elapsed)
+	if elapsed.Seconds() > 0 {
+		fmt.Printf("Tasks Per Second: %.2f\n", tasksPerSecond)
+	} else {
+		fmt.Printf("Tasks Per Second: N/A\n")
+	}
+	if elapsed.Minutes() > 0 {
+		fmt.Printf("Tasks Per Minute: %.2f\n", tasksPerMinute)
+	} else {
+		fmt.Printf("Tasks Per Minute: N/A\n")
+	}
+	if elapsed.Hours()/24 > 0 {
+		fmt.Printf("Tasks Per Day: %.2f\n", tasksPerDay)
+	} else {
+		fmt.Printf("Tasks Per Day: N/A\n")
+	}
 }

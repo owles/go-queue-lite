@@ -184,3 +184,14 @@ func (q *Queue) Run() error {
 
 	return nil
 }
+
+func (q *Queue) GetMetrics() []*Metrics {
+	q.Lock()
+	defer q.Unlock()
+
+	m := make([]*Metrics, q.config.Workers)
+	for i, w := range q.workers {
+		m[i] = w.GetMetric()
+	}
+	return m
+}

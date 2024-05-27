@@ -25,17 +25,23 @@ type WorkerContext struct {
 }
 
 type Worker struct {
-	id  int
-	ctx *WorkerContext
+	id     int
+	ctx    *WorkerContext
+	metric *Metrics
 }
 
 func NewWorker(id int, ctx *WorkerContext) *Worker {
 	ctx.ctx = WithLogWorkerID(ctx.ctx, id)
 
 	return &Worker{
-		id:  id,
-		ctx: ctx,
+		id:     id,
+		ctx:    ctx,
+		metric: NewMetrics(),
 	}
+}
+
+func (w *Worker) GetMetric() *Metrics {
+	return w.metric
 }
 
 func (w *Worker) start() {
@@ -49,6 +55,7 @@ func (w *Worker) start() {
 		case job := <-w.ctx.jobCh:
 			job.Attempt()
 			ctx := WithLogJobID(w.ctx.ctx, job.ID)
+			ts := time.Now()
 
 			pl, err := job.Decode()
 			if err != nil {
@@ -62,16 +69,22 @@ func (w *Worker) start() {
 					var task core.Task
 					task, err = w.ctx.typeManager.ExtractType(pl.Type)
 					if err != nil {
+						w.metric.IncErrors()
 						w.ctx.logger.ErrorContext(ctx, "can't extract type", "error", err)
+
 						w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 					} else {
 						err = json.Unmarshal(pl.Data, task)
 
 						if err != nil {
+							w.metric.IncErrors()
 							w.ctx.logger.ErrorContext(ctx, "can't unmarshall payload", "error", err)
+
 							w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 						} else {
 							if err = task.Handle(); err != nil {
+								w.metric.RecordProcessingTime(time.Since(ts))
+								w.metric.IncErrors()
 								w.ctx.logger.ErrorContext(ctx, "can't handle job task", "error", err)
 
 								job.SetError(err.Error())
@@ -84,6 +97,9 @@ func (w *Worker) start() {
 									w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 								}
 							} else {
+								w.metric.RecordProcessingTime(time.Since(ts))
+								w.metric.IncProcessed()
+
 								if w.ctx.removeDoneJobs {
 									w.ctx.logger.InfoContext(ctx, "processed job", "action", "delete")
 									w.ctx.src.DeleteJob(job.Queue, job.ID)
