@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"go-queue-lite/core"
+	"log/slog"
 	"reflect"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ type Config struct {
 	DelayAttempts  time.Duration
 	PrefetchFactor int
 	RemoveDoneJobs bool
+	logger         *slog.Logger
 }
 
 type Queue struct {
@@ -35,48 +37,43 @@ type Queue struct {
 
 	typeManager core.TaskTypeManagerInterface
 
-	tasks []core.Model
-
 	workers []*Worker
+
+	logger *slog.Logger
 }
 
 func New(ctx context.Context, src core.SourceInterface, config Config) *Queue {
 	newCtx, cancel := context.WithCancel(context.WithValue(ctx, "queue", config.Name))
 
+	var lg *slog.Logger
+	if config.logger == nil {
+		lg = slog.Default()
+		newCtx = WithEnabled(newCtx, false)
+	} else {
+		lg = config.logger
+		newCtx = WithEnabled(newCtx, true)
+	}
+
 	return &Queue{
-		ctx:       newCtx,
+		ctx:       WithLogQueue(newCtx, config.Name),
 		cancel:    cancel,
 		config:    config,
 		isRunning: false,
 		src:       src,
-		tasks:     []core.Model{},
 		workers:   make([]*Worker, config.Workers),
 		jobCh:     make(chan *core.Model, config.Workers),
 
 		typeManager: NewTaskTypeManager(),
+
+		logger: slog.New(NewLogHandlerMiddleware(lg.Handler())),
 	}
 }
 
 func (q *Queue) RegisterTaskType(typ core.Task) *Queue {
+	slog.DebugContext(WithLogJobType(q.ctx, reflect.TypeOf(typ).String()), "register type")
+
 	q.typeManager.RegisterType(typ)
 	return q
-}
-
-func (q *Queue) addTasks(jobs []core.Model) {
-	q.Lock()
-	defer q.Unlock()
-	q.tasks = append(q.tasks, jobs...)
-}
-
-func (q *Queue) getTask() (core.Model, error) {
-	q.Lock()
-	defer q.Unlock()
-	if len(q.tasks) == 0 {
-		return core.Model{}, core.ErrNoJobsFound
-	}
-	job := q.tasks[0]
-	q.tasks = q.tasks[1:]
-	return job, nil
 }
 
 func (q *Queue) Enqueue(job *Job) error {
@@ -84,7 +81,12 @@ func (q *Queue) Enqueue(job *Job) error {
 	defer q.Unlock()
 
 	dataType := reflect.TypeOf(job.task)
+	ctx := WithLogJobType(q.ctx, dataType.String())
+
+	slog.DebugContext(ctx, "enqueue")
+
 	if !q.typeManager.ExistType(dataType.String()) {
+		slog.ErrorContext(ctx, "typeManager.ExistType", "error", core.ErrTypeNotRegistered)
 		return core.ErrTypeNotRegistered
 	}
 
@@ -92,10 +94,12 @@ func (q *Queue) Enqueue(job *Job) error {
 
 	model, err := job.getModel()
 	if err != nil {
+		slog.ErrorContext(ctx, "job.getModel", "error", err)
 		return err
 	}
 
 	if err = q.src.Enqueue(model); err != nil {
+		slog.ErrorContext(ctx, "source.Enqueue", "error", err)
 		return err
 	}
 
@@ -105,6 +109,8 @@ func (q *Queue) Enqueue(job *Job) error {
 func (q *Queue) Stop() {
 	q.Lock()
 	defer q.Unlock()
+
+	q.logger.InfoContext(q.ctx, "stop queue")
 
 	q.cancel()
 }
@@ -123,9 +129,12 @@ func (q *Queue) pool() {
 			jobs, err := q.src.Dequeue(q.config.Name, q.config.Workers*prefetchFactor)
 			if err != nil || len(jobs) == 0 {
 				if errors.Is(err, core.ErrNoJobsFound) || len(jobs) == 0 {
+					q.logger.DebugContext(q.ctx, "no jobs found, wait a second")
 					time.Sleep(time.Second)
 				}
 				continue
+			} else {
+				q.logger.DebugContext(q.ctx, "found new jobs", "count", len(jobs))
 			}
 
 			for _, job := range jobs {
@@ -147,8 +156,10 @@ func (q *Queue) Run() error {
 
 	q.isRunning = true
 
+	q.logger.InfoContext(q.ctx, "start queue")
+
 	for i := 0; i < q.config.Workers; i++ {
-		q.workers[i] = NewWorker(i, &WorkerContext{
+		q.workers[i] = NewWorker(i+1, &WorkerContext{
 			ctx:         q.ctx,
 			wg:          &q.wg,
 			jobCh:       q.jobCh,
@@ -158,6 +169,8 @@ func (q *Queue) Run() error {
 			tryAttempts:    q.config.TryAttempts,
 			delayAttempts:  q.config.DelayAttempts,
 			removeDoneJobs: q.config.RemoveDoneJobs,
+
+			logger: q.logger,
 		})
 		go q.workers[i].start()
 	}

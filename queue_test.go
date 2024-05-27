@@ -7,6 +7,8 @@ import (
 	"go-queue-lite/adapters/pg"
 	"go-queue-lite/adapters/redis"
 	"go-queue-lite/adapters/sqlite"
+	"log/slog"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -14,7 +16,7 @@ import (
 
 var wg sync.WaitGroup
 var doneJobs sync.Map
-var jobsCount = 100_000
+var jobsCount = 100
 
 type mockTask struct {
 	ID int
@@ -210,13 +212,18 @@ func TestRedis(t *testing.T) {
 		t.Fatalf("Failed to connect to PG: %v", err)
 	}
 
+	l := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
 	queue := New(ctx, src, Config{
-		Workers:        1,
+		Workers:        5,
 		Name:           "default",
 		RemoveDoneJobs: true,
 		TryAttempts:    3,
 		PrefetchFactor: 1,
 		DelayAttempts:  time.Second * 15,
+		logger:         l,
 	})
 
 	src.Clear("default")

@@ -3,8 +3,8 @@ package go_queue_lite
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"go-queue-lite/core"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -20,6 +20,8 @@ type WorkerContext struct {
 	tryAttempts    int
 	delayAttempts  time.Duration
 	removeDoneJobs bool
+
+	logger *slog.Logger
 }
 
 type Worker struct {
@@ -28,6 +30,8 @@ type Worker struct {
 }
 
 func NewWorker(id int, ctx *WorkerContext) *Worker {
+	ctx.ctx = WithLogWorkerID(ctx.ctx, id)
+
 	return &Worker{
 		id:  id,
 		ctx: ctx,
@@ -38,42 +42,53 @@ func (w *Worker) start() {
 	w.ctx.wg.Add(1)
 	defer w.ctx.wg.Done()
 
-	fmt.Printf("worker %d started\n", w.id)
+	w.ctx.logger.InfoContext(w.ctx.ctx, "start worker")
 
 	for {
 		select {
 		case job := <-w.ctx.jobCh:
-			//fmt.Printf("worker: %d got a Job: %s with priority: %d \n", w.id, job.ID, job.Priority)
-			//
 			job.Attempt()
+			ctx := WithLogJobID(w.ctx.ctx, job.ID)
 
 			pl, err := job.Decode()
 			if err != nil {
+				w.ctx.logger.ErrorContext(ctx, "can't decode job", "error", err)
 				w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 			} else {
+				ctx = WithLogJobType(ctx, pl.Type)
+				w.ctx.logger.InfoContext(ctx, "processing job")
+
 				if w.ctx.typeManager.ExistType(pl.Type) {
 					var task core.Task
 					task, err = w.ctx.typeManager.ExtractType(pl.Type)
 					if err != nil {
+						w.ctx.logger.ErrorContext(ctx, "can't extract type", "error", err)
 						w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 					} else {
 						err = json.Unmarshal(pl.Data, task)
 
 						if err != nil {
+							w.ctx.logger.ErrorContext(ctx, "can't unmarshall payload", "error", err)
 							w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 						} else {
 							if err = task.Handle(); err != nil {
+								w.ctx.logger.ErrorContext(ctx, "can't handle job task", "error", err)
+
 								job.SetError(err.Error())
 								if job.Attempts < w.ctx.tryAttempts {
-									w.ctx.src.UpdateJob(*job.SetStatus(core.JobQueued).
-										SetAvailableAt(time.Now().Add(w.ctx.delayAttempts).UTC()))
+									delay := time.Now().Add(w.ctx.delayAttempts).UTC()
+									w.ctx.logger.DebugContext(ctx, "delay", "available_at", delay)
+									w.ctx.src.UpdateJob(*job.SetStatus(core.JobQueued).SetAvailableAt(delay))
 								} else {
+									w.ctx.logger.DebugContext(ctx, "mark as error")
 									w.ctx.src.UpdateJob(*job.SetStatus(core.JobError))
 								}
 							} else {
 								if w.ctx.removeDoneJobs {
+									w.ctx.logger.InfoContext(ctx, "processed job", "action", "delete")
 									w.ctx.src.DeleteJob(job.Queue, job.ID)
 								} else {
+									w.ctx.logger.InfoContext(ctx, "processed job", "action", "keep")
 									w.ctx.src.UpdateJob(*job.SetStatus(core.JobDone))
 								}
 							}
@@ -82,6 +97,7 @@ func (w *Worker) start() {
 				}
 			}
 		case <-w.ctx.ctx.Done():
+			w.ctx.logger.InfoContext(w.ctx.ctx, "stop worker")
 			return
 		}
 	}
