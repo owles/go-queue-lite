@@ -10,6 +10,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"io/fs"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -22,6 +23,7 @@ var Migrations embed.FS
 
 type Source struct {
 	db *sqlx.DB
+	mu sync.Mutex
 }
 
 func NewSQLiteSource(dsn string) (*Source, error) {
@@ -67,6 +69,9 @@ func (s *Source) Up() error {
 }
 
 func (s *Source) ResetPending(queue string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	query := `
 		UPDATE jobs
 		SET status = ?
@@ -77,6 +82,9 @@ func (s *Source) ResetPending(queue string) error {
 }
 
 func (s *Source) Enqueue(job core.Model) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	query := `
 		INSERT INTO jobs (
 			id, queue, priority, status, attempts, error, payload, score, available_at, created_at
@@ -100,6 +108,9 @@ func (s *Source) Enqueue(job core.Model) error {
 }
 
 func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	tx, err := s.db.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %v", err)
@@ -187,6 +198,9 @@ func (s *Source) Dequeue(queue string, limit int) ([]core.Model, error) {
 }
 
 func (s *Source) UpdateJob(job core.Model) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	query := `
 		UPDATE jobs
 		SET status = :status, attempts = :attempts, error = :error, available_at = :available_at
@@ -203,6 +217,9 @@ func (s *Source) UpdateJob(job core.Model) error {
 }
 
 func (s *Source) DeleteJob(queue, jobID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	query := `
 		DELETE FROM jobs
 		WHERE id = ? AND queue = ?;
@@ -212,6 +229,9 @@ func (s *Source) DeleteJob(queue, jobID string) error {
 }
 
 func (s *Source) Length(queue string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	query := `
 		SELECT COUNT(*)
 		FROM jobs
@@ -223,6 +243,9 @@ func (s *Source) Length(queue string) (int, error) {
 }
 
 func (s *Source) Count(queue string, status core.Status) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	query := `
 		SELECT COUNT(*)
 		FROM jobs
@@ -234,6 +257,9 @@ func (s *Source) Count(queue string, status core.Status) (int, error) {
 }
 
 func (s *Source) Clear(queue string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	query := `
 		DELETE FROM jobs
 		WHERE queue = ?;
@@ -243,5 +269,8 @@ func (s *Source) Clear(queue string) error {
 }
 
 func (s *Source) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	return s.db.Close()
 }
