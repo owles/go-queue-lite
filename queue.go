@@ -19,7 +19,7 @@ type Config struct {
 	DelayAttempts  time.Duration
 	PrefetchFactor int
 	RemoveDoneJobs bool
-	logger         *slog.Logger
+	Logger         *slog.Logger
 }
 
 type Queue struct {
@@ -46,11 +46,11 @@ func New(ctx context.Context, src core.SourceInterface, config Config) *Queue {
 	newCtx, cancel := context.WithCancel(context.WithValue(ctx, "queue", config.Name))
 
 	var lg *slog.Logger
-	if config.logger == nil {
+	if config.Logger == nil {
 		lg = slog.Default()
 		newCtx = WithEnabled(newCtx, false)
 	} else {
-		lg = config.logger
+		lg = config.Logger
 		newCtx = WithEnabled(newCtx, true)
 	}
 
